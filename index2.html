@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ko"> 
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase2: 몽중몽</title>
+    <style>
+        html, body { 
+            margin: 0;
+        }
+        body { 
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            color: white; 
+            display: flex;
+            flex-direction: column;
+            font-family: 'Helvetica', Arial, sans-serif; 
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('img1.jpg');
+            z-index: 10000;
+            color: white;
+            text-align: center;
+            padding-top: 5%;
+            font-size: 20px;
+        }
+
+        video.modal-video {
+            width: 80%;
+            height: auto;
+            max-width: 400px;
+            max-height: 250px;
+        }
+
+        .button {
+            padding: 8px 16px;
+            font-size: 1.2em;
+            background-color: #ff1493;
+            color: rgb(255, 255, 255);
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px;
+        }
+
+        .button:hover {
+            background-color: #000000;
+            transform: scale(1.05);
+        }
+
+        #progress {
+            width: 100%;
+            background-color: #333;
+            overflow: hidden;
+        }
+        #progress-bar {
+            width: 0%;
+            height: 20px;
+            background-color:#ff1493;
+            transition: width 0.3s ease;
+        }
+
+        .moving-text {
+            position: fixed;
+            bottom: 10%;
+            display: inline-block;
+            padding: 10px 18px;
+            font-size: 16px;
+            color: white;
+            white-space: nowrap;
+            animation: bounceText 10s infinite cubic-bezier(0.68, -0.55, 0.27, 1.55);
+        }
+
+        @keyframes bounceText {
+            0% { transform: translateX(0); }
+            40% { transform: translateX(calc(50vw - 50%)); }
+            60% { transform: translateX(calc(50vw - 50%)); }
+            100% { transform: translateX(calc(100vw - 100%)); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+    </style>
+</head>
+<body>
+    <div id="endModal" class="modal">
+        모든 것이 흐릿해지며, 끝없는 꿈 속에 빠져듭니다.<br>여긴 끝일까요, 아니면 시작일까요? <br><br> Phase 3으로 진입 준비 중...
+        <br><br>
+        <video id="modal-video" class="modal-video" controls autoplay muted loop>
+            <source src="dream1.mp4" type="video/mp4">
+        </video>        
+        <br><br>
+        <button class="button" id="goToPhase3">Go to Phase 3</button>
+    </div>
+
+    <div id="progress">
+        <div id="progress-bar"></div>
+    </div>
+
+    <div class="moving-text">클릭으로 도형을 생성하세요</div>
+
+    <audio id="background-audio" src="soundsy.mp3" type="audio/mp3" preload="auto"></audio>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+  <script>
+    let scene = new THREE.Scene();
+    let camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    let renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    let ambientLight = new THREE.AmbientLight(0xffffff, 0.5); 
+    scene.add(ambientLight);
+
+    let directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+    directionalLight.position.set(1, 1, 1).normalize();
+    scene.add(directionalLight);
+
+    let controls = new THREE.OrbitControls(camera, renderer.domElement);
+    camera.position.set(0, 0, 40);
+    controls.update();
+
+    const colors = [0x39ff14, 0xffffff, 0x0000ff, 0xff1493, 0xffd700];
+    let clickCount = 0;
+    let isAudioPlaying = false; // 음악 재생 상태를 추적하는 변수
+
+    function addRandomShape() {
+        const shapes = ['box', 'sphere', 'cone', 'cylinder', 'torus'];
+        const randomShape = shapes[Math.floor(Math.random() * shapes.length)];
+        let geometry, material, mesh;
+        const randomColor = colors[Math.floor(Math.random() * colors.length)];
+
+        switch (randomShape) {
+            case 'box': geometry = new THREE.BoxGeometry(4, 4, 4); break;
+            case 'sphere': geometry = new THREE.SphereGeometry(3, 32, 32); break;
+            case 'cone': geometry = new THREE.ConeGeometry(3, 6, 32); break;
+            case 'cylinder': geometry = new THREE.CylinderGeometry(3, 3, 6, 32); break;
+            case 'torus': geometry = new THREE.TorusGeometry(3, 1, 16, 100); break;
+        }
+
+        material = new THREE.MeshLambertMaterial({ color: randomColor });
+        mesh = new THREE.Mesh(geometry, material);
+        mesh.position.set((Math.random() - 0.5) * 50, (Math.random() - 0.5) * 50, (Math.random() - 0.5) * 50);
+        scene.add(mesh);
+    }
+
+    function updateProgressBar() {
+        clickCount++;
+        const progressBar = document.getElementById('progress-bar');
+        const progress = (clickCount / 30) * 100; 
+        progressBar.style.width = `${progress}%`;
+
+        if (clickCount >= 30) {
+            showEndModal();
+        }
+    }
+
+    function showEndModal() {
+        const modal = document.getElementById('endModal');
+        modal.style.display = 'block'; 
+    }
+
+    window.addEventListener('click', (event) => {
+        // 음악이 재생되지 않았다면 클릭 시 재생
+        var audio = document.getElementById('background-audio');
+        if (!isAudioPlaying) {
+            audio.play();
+            isAudioPlaying = true;
+        }
+        addRandomShape();
+        updateProgressBar();
+    });
+
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    animate();
+
+    document.getElementById('goToPhase3').addEventListener('click', function() {
+        window.location.href = 'index3.html';
+    });
+
+</script>
+
+</body>
+</html>

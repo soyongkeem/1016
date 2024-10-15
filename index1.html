@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8"> 
+    <meta charset="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase 1 - 몽(夢)</title>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background-image: url('img0.jpg'); 
+            background-size: cover; 
+            background-position: center; 
+            background-repeat: no-repeat; 
+            color: white; 
+            font-family: 'Helvetica', Arial, sans-serif; 
+        }
+        #phase-bar {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 10px;
+            z-index: 10;
+        }
+        #progress {
+            width: 300px;
+            height: 20px;
+            background-color: #333;
+            border-radius: 0px;
+            margin-top: 10px;
+        }
+        #progress-bar {
+            height: 100%;
+            background-color: #ff1493;
+            width: 0;
+            transition: width 4s ease;
+        }
+        #timer {
+            margin-top: 10px;
+            font-size: 16px;
+            color: #fff;
+        }
+        #current-phase, #next-phase {
+            font-size: 18px;
+            color: white;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('img0.jpg');
+            z-index: 10000;
+            color: white;
+            text-align: center;
+            padding-top: 5%;
+            font-size: 20px;
+        }
+
+        video.modal-video {
+            width: 100%;
+            height: auto;
+            max-width: 500px;
+            max-height: 350px;
+        }
+
+        .button {
+            padding: 8px 16px;
+            font-size: 1.2em;
+            background-color: #000000;
+            color: rgb(255, 255, 255);
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px;
+        }
+
+        .button:hover {
+            background-color: #ff1493;
+            transform: scale(1.05);
+        }
+
+        .moving-text {
+        position: fixed;
+        bottom: 10%; 
+        display: inline-block;
+        padding: 10px 18px;
+        font-size: 16px;
+        color: white;
+        white-space: nowrap;
+        animation: bounceText 10s infinite cubic-bezier(0.68, -0.55, 0.27, 1.55);
+        font-family: 'Helvetica', Arial, sans-serif;
+    }
+
+    @keyframes bounceText {
+        0% { transform: translateX(0); }
+        40% { transform: translateX(calc(50vw - 50%)); }
+        60% { transform: translateX(calc(50vw - 50%)); }
+        100% { transform: translateX(calc(100vw - 100%)); }
+    }
+    </style>
+</head>
+<body>
+    <audio id="background-audio" src="sound.mp3" type="audio/mp3" preload="auto"></audio>
+    <div id="endModal" class="modal">
+            <br><br>
+            <video id="modal-video" class="modal-video" controls autoplay muted loop>
+                <source src="dream1.mp4" type="video/mp4">
+            </video>            
+            <br><br>
+            <button class="button" id="goToPhase2">Go to Phase 2</button>
+        </div>
+    </div>
+    <div class="moving-text">드레그로 꿈 속을 탐험하세요</div>
+    <div id="phase-bar">
+        <div>Now Phase: <span id="current-phase">Phase1</span></div>
+        <div>Next Phase: <span id="next-phase">Phase2</span></div>
+        <div id="progress">
+            <div id="progress-bar"></div>
+        </div>
+        <div id="timer">타이머: 15초</div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        let scene = new THREE.Scene();
+        let camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        let renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        let ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+
+        let light = new THREE.PointLight(0xffffff, 1, 100);
+        light.position.set(10, 10, 10);
+        scene.add(light);
+
+        let objects = [];
+        camera.position.z = 40;
+
+        const colors = [0x39ff14, 0xffffff, 0x0000ff, 0xff1493, 0xffd700];
+        let timerElement = document.getElementById('timer');
+        let progressBarElement = document.getElementById('progress-bar');
+        let currentPhaseElement = document.getElementById('current-phase');
+        let nextPhaseElement = document.getElementById('next-phase');
+        const maxTime = 15;
+        let timeLeft = maxTime;
+
+        let controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.enableZoom = true;
+        controls.enablePan = true;
+
+        function resetProgressBarAndTimer() {
+            timeLeft = maxTime;
+            updateProgressBar(0);
+            timerElement.innerText = `타이머: ${timeLeft}초`;
+        }
+        function updateProgressBar(percentage) {
+            progressBarElement.style.width = `${percentage}%`;
+        }
+
+        function startTimer(duration, callback) {
+            const interval = setInterval(() => {
+                timeLeft--;
+                const progressPercentage = ((duration - timeLeft) / duration) * 100;
+                updateProgressBar(progressPercentage);
+                timerElement.innerText = `타이머: ${timeLeft}초`;
+
+                if (timeLeft <= 0) {
+                    clearInterval(interval);
+                    callback();
+                }
+            }, 1000);
+        }
+
+        function addRandomShape() {
+            const shapes = ['box', 'sphere', 'cone', 'cylinder', 'torus'];
+            const randomShape = shapes[Math.floor(Math.random() * shapes.length)];
+            let geometry, material, mesh;
+
+            const randomColor = colors[Math.floor(Math.random() * colors.length)];
+
+            switch (randomShape) {
+                case 'box':
+                    geometry = new THREE.BoxGeometry(8, 8, 8);
+                    break;
+                case 'sphere':
+                    geometry = new THREE.SphereGeometry(6, 64, 64);
+                    break;
+                case 'cone':
+                    geometry = new THREE.ConeGeometry(6, 14, 64);
+                    break;
+                case 'cylinder':
+                    geometry = new THREE.CylinderGeometry(6, 6, 14, 64);
+                    break;
+                case 'torus':
+                    geometry = new THREE.TorusGeometry(6, 2, 32, 200);
+                    break;
+            }
+
+            material = new THREE.MeshPhongMaterial({ 
+                color: randomColor,
+                shininess: 100,
+                specular: 0x444444
+            });
+            mesh = new THREE.Mesh(geometry, material);
+
+            const distance = 50;
+            mesh.position.set(
+                (Math.random() - 0.5) * distance,
+                (Math.random() - 0.5) * distance,
+                (Math.random() - 0.5) * distance
+            );
+
+            mesh.rotation.set(
+                Math.random() * Math.PI,
+                Math.random() * Math.PI,
+                Math.random() * Math.PI
+            );
+
+            scene.add(mesh);
+            objects.push(mesh);
+        }
+
+        function increaseSpeedBasedOnObjects() {
+            return Math.min(objects.length * 0.1, 8);
+        }
+
+        function generateShapesAutomatically() {
+            const interval = setInterval(() => {
+                if (timeLeft > 0) {
+                    addRandomShape();
+                } else {
+                    clearInterval(interval);
+                }
+            }, 500);
+        }
+
+        function startPhase1() {
+            resetProgressBarAndTimer();
+            startTimer(15, moveToPhase2); 
+        }
+
+        function moveToPhase2() {
+            alert("Phase 1 완료. Phase 2로 이동합니다.");
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            let speed = increaseSpeedBasedOnObjects();
+            objects.forEach(obj => {
+                obj.rotation.x += 0.01;
+                obj.rotation.y += 0.01;
+                obj.position.y -= 2 * speed;
+                if (obj.position.y < -50) {
+                    obj.position.y = 50;
+                }
+            });
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        animate();
+        generateShapesAutomatically();
+        startPhase1();
+
+        window.addEventListener('resize', function() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // 음악을 클릭하면 재생되도록 변경
+        window.addEventListener('click', function() {
+            var audio = document.getElementById('background-audio');
+            audio.play().catch(function(error) {
+                console.log("음악 재생 실패: " + error);
+            });
+        });
+
+    function startTimer(duration, callback) {
+        const interval = setInterval(() => {
+            timeLeft--;
+            const progressPercentage = ((duration - timeLeft) / duration) * 100;
+            updateProgressBar(progressPercentage);
+            timerElement.innerText = `타이머: ${timeLeft}초`;
+
+            if (timeLeft <= 0) {
+                clearInterval(interval);
+                document.getElementById('endModal').style.display = 'block';
+                animationRunning = false;
+            }
+        }, 1000);
+    }
+
+    document.getElementById('goToPhase2').onclick = function() {
+        window.location.href = "index2.html";
+    };
+
+    startTimer(15, moveToPhase2);
+
+    modalVideo.play();
+
+    </script>
+
+</body>
+</html>
